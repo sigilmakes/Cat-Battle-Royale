@@ -1,0 +1,25 @@
+# Local secrets (commit only sanitized examples)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+node_modules/
+
+# Build and test output
+/build/
+/dist/
+/coverage/
+.coverage
+coverage.xml
+
+# Local agent state and OS files
+/.pi/
+/.prime/
+.DS_Store
