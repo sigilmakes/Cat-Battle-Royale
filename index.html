@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cat Battle Royale</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #game-container {
+      position: relative;
+      width: 1000px;
+      height: 750px;
+      background: #0284c7;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    /* Lobby Overlay */
+    #lobby-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      gap: 16px;
+    }
+    .card {
+      background: #1e293b;
+      padding: 32px 40px;
+      border-radius: 16px;
+      border: 1px solid #334155;
+      text-align: center;
+      width: 380px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #f59e0b, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.subtitle {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-bottom: 24px;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+      margin-bottom: 16px;
+    }
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #cbd5e1;
+      letter-spacing: 0.5px;
+    }
+    input {
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #f8fafc;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      border-color: #38bdf8;
+    }
+    button.btn-primary {
+      width: 100%;
+      background: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 8px;
+    }
+    button.btn-primary:hover {
+      background: #0369a1;
+    }
+    button.btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    /* HUD Overlay */
+    #hud-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+    }
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .hud-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 10px 16px;
+    }
+    .storm-hud {
+      text-align: center;
+      min-width: 200px;
+    }
+    .storm-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #cbd5e1;
+    }
+    .storm-timer {
+      font-size: 18px;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+    .storm-warning {
+      color: #ef4444 !important;
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+      from { opacity: 0.7; }
+      to { opacity: 1; }
+    }
+
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .health-bar-container {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .health-pip {
+      width: 24px;
+      height: 12px;
+      border-radius: 3px;
+      background: #22c55e;
+      border: 1px solid rgba(0, 0, 0, 0.3);
+    }
+    .health-pip.lost {
+      background: #334155;
+    }
+    .ammo-hud {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .ammo-count {
+      font-size: 26px;
+      font-weight: 900;
+      color: #38bdf8;
+    }
+    .ammo-tier {
+      font-size: 12px;
+      font-weight: 600;
+      color: #f59e0b;
+    }
+    .reload-bar {
+      width: 100px;
+      height: 6px;
+      background: #334155;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 6px;
+      display: none;
+    }
+    .reload-fill {
+      height: 100%;
+      width: 0%;
+      background: #f59e0b;
+      transition: width 0.05s linear;
+    }
+
+    /* Finished / Rematch Overlay */
+    #finish-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+      pointer-events: auto;
+    }
+    #finish-title {
+      font-size: 36px;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+    #finish-desc {
+      font-size: 16px;
+      color: #cbd5e1;
+      margin-bottom: 24px;
+    }
+    .btn-rematch {
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 28px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-rematch:hover {
+      background: #059669;
+    }
+
+    /* Waiting screen in lobby */
+    #waiting-overlay {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9);
+      padding: 10px 24px;
+      border-radius: 20px;
+      border: 1px solid #38bdf8;
+      font-size: 14px;
+      font-weight: 700;
+      color: #38bdf8;
+      z-index: 20;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="lobby-overlay">
+      <div class="card">
+        <h1>Cat Battle Royale</h1>
+        <p class="subtitle">3 Cats. 1 Island. Watergun Chaos.</p>
+        <div class="input-group">
+          <label for="player-name">Cat Name</label>
+          <input type="text" id="player-name" placeholder="Ginger, Whiskers..." maxlength="15" value="Whiskers" />
+        </div>
+        <div class="input-group">
+          <label for="room-code">Room Code</label>
+          <input type="text" id="room-code" placeholder="main" maxlength="10" value="main" />
+        </div>
+        <button id="join-btn" class="btn-primary">Join Match</button>
+      </div>
+    </div>
+
+    <div id="waiting-overlay">Waiting for 3 players to connect (1/3)...</div>
+
+    <div id="hud-overlay">
+      <div class="hud-top">
+        <div class="hud-card">
+          <div style="font-size: 12px; color: #94a3b8;">Health</div>
+          <div class="health-bar-container" id="hp-pips">
+            <div class="health-pip"></div>
+            <div class="health-pip"></div>
+            <div class="health-pip"></div>
+            <div class="health-pip"></div>
+          </div>
+        </div>
+
+        <div class="hud-card storm-hud">
+          <div class="storm-title" id="storm-status">Tornado Eye Safe</div>
+          <div class="storm-timer" id="storm-countdown">0:30</div>
+        </div>
+
+        <div class="hud-card" style="text-align: right;">
+          <div style="font-size: 12px; color: #94a3b8;">Dreamies</div>
+          <div id="dreamies-count" style="font-size: 18px; font-weight: 800; color: #fbbf24;">0 / 5</div>
+        </div>
+      </div>
+
+      <div class="hud-bottom">
+        <div class="hud-card" id="ghost-indicator" style="display: none; background: rgba(147, 51, 234, 0.4); border-color: #a855f7;">
+          <div style="font-size: 13px; font-weight: 800; color: #d8b4fe;">GHOST SPECTATOR</div>
+        </div>
+
+        <div class="hud-card ammo-hud">
+          <div class="ammo-tier" id="weapon-tier">Tier 1: Starter Gun</div>
+          <div class="ammo-count" id="ammo-display">4 / 4</div>
+          <div class="reload-bar" id="reload-bar-container">
+            <div class="reload-fill" id="reload-bar-fill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="finish-overlay">
+      <h2 id="finish-title">Victory!</h2>
+      <p id="finish-desc">Whiskers is the last living cat!</p>
+      <button id="rematch-btn" class="btn-rematch">Vote Rematch (0/3)</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/client/main.ts"></script>
+</body>
+</html>

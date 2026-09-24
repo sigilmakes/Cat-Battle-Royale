@@ -1,6 +1,6 @@
 # Working agreements
 
-This is a blank starter; choose the stack before adding application tooling.
+Cat Battle Royale: TypeScript Node.js authoritative server and Vite browser client.
 
 ## Workflow
 
