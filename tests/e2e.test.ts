@@ -186,6 +186,59 @@ describe('Automated Multi-Client E2E Test Suite', () => {
     }
   });
 
+  it.each(['lobby', 'playing'] as const)(
+    'leaves a %s room without receiving its snapshots after joining another room',
+    async (phase) => {
+      const clients = [createTestClient(), createTestClient(), createTestClient()];
+      const [leaver, remaining] = clients;
+      const oldCode = `leave-${phase}`;
+      const newCode = `next-${phase}`;
+      const received: RoomSnapshot[] = [];
+      try {
+        for (const [index, client] of clients.entries()) {
+          const joined = waitForEvent<JoinRoomSuccess>(client, 'room_joined');
+          client.emit('join_room', { roomCode: oldCode, playerName: `Old-${index}` });
+          await joined;
+        }
+        if (phase === 'playing') {
+          const started = waitForSnapshot(leaver, (s) => s.phase === 'playing');
+          clients.forEach((client) => client.emit('toggle_ready', true));
+          await started;
+        }
+
+        rooms.get(oldCode)!.stop();
+        const settled = waitForSnapshot(leaver, (s) =>
+          s.players.some((p) => p.name === 'Old-sync'));
+        remaining.emit('set_name', 'Old-sync');
+        await settled;
+
+        leaver.on('room_state_snapshot', (snapshot: RoomSnapshot) => received.push(snapshot));
+        leaver.emit('leave_room');
+        const joinedNewRoom = waitForEvent<JoinRoomSuccess>(leaver, 'room_joined');
+        leaver.emit('join_room', { roomCode: newCode, playerName: 'New-room-cat' });
+        await joinedNewRoom;
+
+        // Generate a known old-room broadcast, then a new-room broadcast.
+        // Socket.IO preserves packet order on the leaving client's connection;
+        // observing the latter is a barrier, so no arbitrary sleep is needed.
+        const oldUpdated = waitForSnapshot(remaining, (s) =>
+          s.players.some((p) => p.name === 'Old-room-update'));
+        remaining.emit('set_name', 'Old-room-update');
+        await oldUpdated;
+        const newUpdated = waitForSnapshot(leaver, (s) =>
+          s.players.some((p) => p.name === 'New-room-update'));
+        leaver.emit('set_name', 'New-room-update');
+        await newUpdated;
+
+        expect(received.length).toBeGreaterThan(0);
+        expect(received.every((s) => s.players.length === 1 &&
+          s.players.every((p) => p.name.startsWith('New-room-')))).toBe(true);
+      } finally {
+        clients.forEach((client) => client.disconnect());
+      }
+    }
+  );
+
   it('boots user and frees slot cleanly when tab closes in lobby (Issue #14)', async () => {
     const c1 = createTestClient();
     try {

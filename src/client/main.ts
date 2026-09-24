@@ -130,6 +130,8 @@ function initSocket(): void {
   });
 
   socket.on('room_state_snapshot', (snapshot: RoomSnapshot) => {
+    // Ignore packets already in flight when the player clicked Leave Match.
+    if (!localPlayerId) return;
     currentSnapshot = snapshot;
     currentMapId = snapshot.mapId;
     obstacles = MAPS[snapshot.mapId]?.obstacles || MAPS.atoll.obstacles;

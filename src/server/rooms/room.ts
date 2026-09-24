@@ -192,6 +192,9 @@ export class GameRoom {
   }
 
   public handleLeave(socket: Socket): void {
+    // Leave the transport room before disconnect handling broadcasts its update.
+    // A voluntary leave keeps the connection alive for joining another room.
+    socket.leave(this.code);
     this.handleDisconnect(socket);
   }
 
