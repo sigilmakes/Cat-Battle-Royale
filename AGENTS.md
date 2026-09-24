@@ -29,7 +29,7 @@ Read the matching skill before these workflows:
 - Planning a feature or refactor: [.agents/skills/plan/SKILL.md](.agents/skills/plan/SKILL.md).
 - Reviewing changes: [.agents/skills/review/SKILL.md](.agents/skills/review/SKILL.md).
 - Consolidating the issue board: [.agents/skills/triage/SKILL.md](.agents/skills/triage/SKILL.md).
-- Stress-testing an idea: [.agents/skills/grilling/SKILL.md](.agents/skills/grilling/SKILL.md) (manual shortcut: `grill-me`).
+- Stress-testing an idea: [.agents/skills/grilling/SKILL.md](.agents/skills/grilling/SKILL.md) (manual shortcuts: `grill-me`, or [grill-with-docs](.agents/skills/grill-with-docs/SKILL.md) to capture glossary terms and ADRs as you go).
 - Sharpening domain language or recording decisions: [.agents/skills/domain-modeling/SKILL.md](.agents/skills/domain-modeling/SKILL.md).
 - Designing module interfaces: [.agents/skills/codebase-design/SKILL.md](.agents/skills/codebase-design/SKILL.md).
 - Debugging failures or performance regressions: [.agents/skills/diagnosing-bugs/SKILL.md](.agents/skills/diagnosing-bugs/SKILL.md).
