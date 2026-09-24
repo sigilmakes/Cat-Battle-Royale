@@ -14,7 +14,7 @@ No app, language, dependency manager configuration, or CI is selected yet.
 
 - [`AGENTS.md`](AGENTS.md): short rules for session start, development, GitHub, and handoff.
 - [`.agents/skills/`](.agents/skills): small planning, review, and issue-triage workflows,
-  plus `grill-me`, `grilling`, `domain-modeling`, `codebase-design`, and
+  plus `grill-me`, `grill-with-docs`, `grilling`, `domain-modeling`, `codebase-design`, and
   `diagnosing-bugs` with their reference files and debugging script.
 - `.gitignore`: common local secrets, environments, caches, and build output.
 
