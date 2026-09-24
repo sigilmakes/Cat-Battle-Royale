@@ -22,4 +22,5 @@ coverage.xml
 # Local agent state and OS files
 /.pi/
 /.prime/
+/.omp/
 .DS_Store

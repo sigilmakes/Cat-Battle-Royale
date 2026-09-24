@@ -1,37 +1,89 @@
-# thingy
+# Cat Battle Royale
 
-A blank repo with a small, portable agent-assisted development workflow.
-No app, language, dependency manager configuration, or CI is selected yet.
+A 2D multiplayer top-down battle royale browser game built in TypeScript.
 
-## Use it
+Three cats battle on an island with solid cover using waterguns. Survivors collect Dreamies to automatically upgrade their weapons while avoiding a shrinking cat tornado. Eliminated players spectate as ghosts until an immediate rematch.
 
-1. Choose **Use this template** on GitHub to start a project.
-2. Replace this README with the project's purpose and setup instructions.
-3. Choose a stack and add one local check entry point before wiring it into CI.
-4. Adjust `AGENTS.md` to match how you want to work.
+## Core Game Loop & Rules
 
-## What's here
+- **Island Arena**: Bounded circular island surrounded by ocean, with solid cover obstacles (rocks and crates) blocking movement and watergun pellets.
+- **Players**: Exactly 3 players per match. Each cat starts with 4 HP.
+- **Controls**:
+  - Movement: Arrow keys or `WASD`
+  - Aim: Mouse cursor
+  - Fire: `Space` (or mouse click)
+  - Reload: `R` (or automatic when magazine is empty)
+- **Watergun Combat**:
+  - Deals 1 damage per pellet. 4 hits eliminate a full-health cat.
+  - Friendly-fire immunity (pellets never damage the shooter).
+  - Maximum rate of fire: 4 shots/second.
+- **Dreamies & Upgrades**:
+  - Collectible treats scattered across the island.
+  - Automatic upgrades at **5** and **12** Dreamies:
+    - **Tier 0** (Starter): 4 capacity, 2.0s reload
+    - **Tier 1** (5 Dreamies): 6 capacity, 1.5s reload
+    - **Tier 2** (12 Dreamies): 8 capacity, 1.0s reload
+  - Eliminated cats drop all unspent Dreamies at their death location as a drop pile for survivors to collect.
+- **Cat Tornado**:
+  - Shrinking safe zone begins closing after 30 seconds and fully closes by 3 minutes.
+  - 2-second grace period outside the eye.
+  - Escalating exposure damage: 1 damage every 2 seconds, increasing to 1 damage every 1 second after 6 seconds of continuous exposure.
+  - Returning inside the safe eye immediately resets exposure.
+- **Match Lifecycle**:
+  - Match starts automatically when 3 players connect.
+  - Eliminated cats become free-roaming ghost spectators.
+  - Simultaneous final deaths resolve deterministically as a Draw.
+  - Disconnect grace window of 10 seconds allows reconnection before elimination.
+  - Rematches reset all players, weapons, health, storm, and collectibles cleanly.
 
-- [`AGENTS.md`](AGENTS.md): short rules for session start, development, GitHub, and handoff.
-- [`.agents/skills/`](.agents/skills): small planning, review, and issue-triage workflows,
-  plus `grill-me`, `grill-with-docs`, `grilling`, `domain-modeling`, `codebase-design`, and
-  `diagnosing-bugs` with their reference files and debugging script.
-- `.gitignore`: common local secrets, environments, caches, and build output.
+## Architecture
 
-Agents that discover `.agents/skills` can load these skills directly; other
-agents can follow the links in `AGENTS.md`. No harness-specific tools are required.
-GitHub operations use `gh` with authentication to the destination repository.
-The five additional design/debugging skills come from the owner's shared skill
-collection; missing-skill links and delegation requirements were made portable.
+```text
+src/
+├── shared/         # Shared schemas, constants, geometry helpers, and types
+│   ├── constants.ts
+│   ├── geom.ts
+│   └── types.ts
+├── server/         # Authoritative simulation and Socket.IO networking
+│   ├── game/
+│   │   └── simulation.ts
+│   ├── rooms/
+│   │   └── room.ts
+│   └── index.ts
+└── client/         # Browser rendering, input capture, and HUD
+    └── main.ts
+```
 
-## What was trimmed
+- **Authoritative Server**: Node.js + Express + Socket.IO runs the deterministic simulation at 30 Hz and broadcasts snapshots at 15 Hz. Client inputs are validated intents; positions and damage are never client-authoritative.
+- **Client**: Vite + Canvas2D + Socket.IO client interpolating state updates with real-time HUD and controls.
 
-Adapted from the development workflows in
-[goldilocks-core](https://github.com/stfc/goldilocks-core): catchup, reporting,
-testing, documentation, GitHub CLI, Python tooling, and PR handoff became short
-rules instead of separate skills. Planning, review, and triage retain ordered steps.
-Scientific guidance, release infrastructure, mandatory milestones, and the
-skill-authoring manual are omitted. No Goldilocks application code is included.
+## Development & Commands
 
-These are agent instructions, not enforced branch protection or CI checks.
-The adapted material retains its BSD-3-Clause notice in [`LICENSE`](LICENSE).
+- **Install dependencies**:
+  ```bash
+  npm install
+  ```
+- **Start development server (watches and runs backend)**:
+  ```bash
+  npm run dev:server
+  ```
+- **Start Vite client development server**:
+  ```bash
+  npm run dev:client
+  ```
+- **Run all tests (Vitest deterministic rule suite)**:
+  ```bash
+  npm run test
+  ```
+- **Run typecheck and tests**:
+  ```bash
+  npm run check
+  ```
+- **Build production client and server**:
+  ```bash
+  npm run build
+  ```
+- **Run production server**:
+  ```bash
+  npm run start
+  ```
