@@ -1,8 +1,10 @@
 // Authoritative, deterministic game simulation engine
 
 import {
+  BASE_PLAYER_SPEED,
+  CATNIP_DURATION_SECONDS,
+  CATNIP_SPEED_MULTIPLIER,
   COLLECTIBLE_RADIUS,
-  DEFAULT_OBSTACLES,
   DISCONNECT_GRACE_SECONDS,
   DREAMIES_UPGRADE_TIER_1,
   DREAMIES_UPGRADE_TIER_2,
@@ -10,6 +12,8 @@ import {
   ISLAND_CENTER_X,
   ISLAND_CENTER_Y,
   ISLAND_RADIUS,
+  MAPS,
+  MapId,
   MAX_PLAYERS,
   ObstacleRect,
   PELLET_DAMAGE,
@@ -17,7 +21,6 @@ import {
   PELLET_SPEED,
   PLAYER_MAX_HP,
   PLAYER_RADIUS,
-  PLAYER_SPEED,
   STORM_FINAL_RADIUS,
   STORM_GRACE_SECONDS,
   STORM_INITIAL_RADIUS,
@@ -64,8 +67,9 @@ export class GameSimulation {
   public tickCount = 0;
   public elapsedTime = 0;
   public phase: RoomPhase = 'lobby';
+  public mapId: MapId = 'atoll';
   public stormTimer = 0;
-  public obstacles: ObstacleRect[] = [...DEFAULT_OBSTACLES];
+  public obstacles: ObstacleRect[] = [...MAPS.atoll.obstacles];
   public players: Map<string, InternalPlayer> = new Map();
   public pellets: InternalPellet[] = [];
   public collectibles: CollectibleState[] = [];
@@ -73,10 +77,17 @@ export class GameSimulation {
   public winnerName: string | null = null;
   public isDraw = false;
   public rematchVotes: Set<string> = new Set();
+
   private nextPelletId = 1;
   private nextCollectibleId = 1;
 
-  constructor() {
+  constructor(initialMap: MapId = 'atoll') {
+    this.setMap(initialMap);
+  }
+
+  public setMap(mapId: MapId): void {
+    this.mapId = mapId;
+    this.obstacles = [...(MAPS[mapId]?.obstacles || MAPS.atoll.obstacles)];
     this.resetCollectibles();
   }
 
@@ -92,8 +103,9 @@ export class GameSimulation {
 
   public resetCollectibles(): void {
     this.collectibles = [];
-    // Place standard Dreamies around the island
-    const standardPositions: Point[] = [
+
+    // Distinct positions for Dreamies, Catnip, and Tuna
+    const dreamiesPositions: Point[] = [
       { x: 600, y: 480 },
       { x: 600, y: 720 },
       { x: 480, y: 600 },
@@ -106,23 +118,56 @@ export class GameSimulation {
       { x: 600, y: 980 },
       { x: 220, y: 600 },
       { x: 980, y: 600 },
-      { x: 380, y: 320 },
-      { x: 820, y: 320 },
-      { x: 600, y: 600 }, // center
     ];
 
-    for (const pos of standardPositions) {
+    const catnipPositions: Point[] = [
+      { x: 400, y: 400 },
+      { x: 800, y: 400 },
+      { x: 400, y: 800 },
+      { x: 800, y: 800 },
+    ];
+
+    const tunaPositions: Point[] = [
+      { x: 600, y: 600 }, // center prize
+      { x: 380, y: 500 },
+      { x: 820, y: 700 },
+    ];
+
+    for (const pos of dreamiesPositions) {
       this.collectibles.push({
-        id: `c-${this.nextCollectibleId++}`,
+        id: `c-dreamies-${this.nextCollectibleId++}`,
         x: pos.x,
         y: pos.y,
+        type: 'dreamies',
+        value: 1,
+        isDeathDrop: false,
+      });
+    }
+
+    for (const pos of catnipPositions) {
+      this.collectibles.push({
+        id: `c-catnip-${this.nextCollectibleId++}`,
+        x: pos.x,
+        y: pos.y,
+        type: 'catnip',
+        value: 1,
+        isDeathDrop: false,
+      });
+    }
+
+    for (const pos of tunaPositions) {
+      this.collectibles.push({
+        id: `c-tuna-${this.nextCollectibleId++}`,
+        x: pos.x,
+        y: pos.y,
+        type: 'tuna',
         value: 1,
         isDeathDrop: false,
       });
     }
   }
 
-  public addPlayer(id: string, name: string, reconnectToken: string): InternalPlayer | null {
+  public addPlayer(id: string, name: string, reconnectToken: string, preferredMap: MapId = 'atoll'): InternalPlayer | null {
     if (this.players.size >= MAX_PLAYERS) {
       return null;
     }
@@ -136,6 +181,8 @@ export class GameSimulation {
       name,
       slot,
       status: 'alive',
+      ready: false,
+      mapVote: preferredMap,
       x: spawn.x,
       y: spawn.y,
       aimAngle: 0,
@@ -148,6 +195,7 @@ export class GameSimulation {
       isReloading: false,
       reloadProgress: 0,
       stormExposureSeconds: 0,
+      speedBoostSeconds: 0,
       fireCooldown: 0,
       reloadTimeRemaining: 0,
       disconnectSeconds: 0,
@@ -156,14 +204,74 @@ export class GameSimulation {
     };
 
     this.players.set(id, player);
+    return player;
+  }
 
-    // Auto-start game if exactly 3 players join
-    if (this.players.size === MAX_PLAYERS && this.phase === 'lobby') {
-      this.phase = 'playing';
-      this.stormTimer = 0;
+  public setPlayerName(id: string, name: string): void {
+    const player = this.players.get(id);
+    if (!player) return;
+    player.name = name.trim().slice(0, 15) || 'Cat';
+  }
+
+  public voteMap(id: string, mapId: MapId): void {
+    const player = this.players.get(id);
+    if (!player || this.phase !== 'lobby') return;
+    if (MAPS[mapId]) {
+      player.mapVote = mapId;
+    }
+  }
+
+  public setPlayerReady(id: string, ready?: boolean): void {
+    const player = this.players.get(id);
+    if (!player || this.phase !== 'lobby') return;
+    player.ready = typeof ready === 'boolean' ? ready : !player.ready;
+
+    this.checkLobbyStart();
+  }
+
+  public checkLobbyStart(): void {
+    if (this.phase !== 'lobby') return;
+    if (this.players.size < MAX_PLAYERS) return;
+
+    // Check if all players are ready
+    const allReady = Array.from(this.players.values()).every((p) => p.ready);
+    if (!allReady) return;
+
+    // Tally map votes
+    const votes: Record<MapId, number> = { atoll: 0, temple: 0, jungle: 0 };
+    for (const p of this.players.values()) {
+      votes[p.mapVote] = (votes[p.mapVote] || 0) + 1;
     }
 
-    return player;
+    let winningMap: MapId = 'atoll';
+    let maxVotes = -1;
+    for (const [mid, count] of Object.entries(votes)) {
+      if (count > maxVotes) {
+        maxVotes = count;
+        winningMap = mid as MapId;
+      }
+    }
+
+    this.setMap(winningMap);
+    this.phase = 'playing';
+    this.stormTimer = 0;
+  }
+
+  public removePlayer(id: string): void {
+    // In lobby phase, remove completely so another user can take the slot
+    if (this.phase === 'lobby') {
+      this.players.delete(id);
+      // Reassign slots
+      let idx = 0;
+      for (const p of this.players.values()) {
+        p.slot = idx++;
+        const spawn = GameSimulation.getSpawnPoint(p.slot);
+        p.x = spawn.x;
+        p.y = spawn.y;
+      }
+    } else {
+      this.markDisconnected(id);
+    }
   }
 
   public markDisconnected(id: string): void {
@@ -223,6 +331,7 @@ export class GameSimulation {
       player.reloadTimeRemaining = 0;
       player.fireCooldown = 0;
       player.stormExposureSeconds = 0;
+      player.speedBoostSeconds = 0;
       player.lastStormDamageTime = 0;
       player.disconnectSeconds = 0;
     }
@@ -292,14 +401,24 @@ export class GameSimulation {
         player.aimAngle = input.aimAngle;
       }
 
+      // Decrement speed boost duration
+      if (player.speedBoostSeconds > 0) {
+        player.speedBoostSeconds = Math.max(0, player.speedBoostSeconds - dt);
+      }
+
+      const currentSpeed =
+        player.speedBoostSeconds > 0
+          ? BASE_PLAYER_SPEED * CATNIP_SPEED_MULTIPLIER
+          : BASE_PLAYER_SPEED;
+
       if (input && (player.status === 'alive' || player.status === 'ghost')) {
         let moveX = clamp(input.moveX || 0, -1, 1);
         let moveY = clamp(input.moveY || 0, -1, 1);
         const norm = normalizeVector(moveX, moveY);
 
         if (norm.x !== 0 || norm.y !== 0) {
-          let newX = player.x + norm.x * PLAYER_SPEED * dt;
-          let newY = player.y + norm.y * PLAYER_SPEED * dt;
+          let newX = player.x + norm.x * currentSpeed * dt;
+          let newY = player.y + norm.y * currentSpeed * dt;
 
           if (player.status === 'alive') {
             // Collide with solid rectangular cover
@@ -462,9 +581,20 @@ export class GameSimulation {
       }
 
       if (pickedUpBy) {
-        pickedUpBy.dreamies += item.value;
-        // Re-evaluate weapon tier
-        this.updatePlayerTier(pickedUpBy);
+        if (item.type === 'dreamies') {
+          pickedUpBy.dreamies += item.value;
+          this.updatePlayerTier(pickedUpBy);
+        } else if (item.type === 'catnip') {
+          // Speed boost + instant full reload!
+          pickedUpBy.speedBoostSeconds = CATNIP_DURATION_SECONDS;
+          pickedUpBy.isReloading = false;
+          pickedUpBy.reloadProgress = 0;
+          pickedUpBy.reloadTimeRemaining = 0;
+          pickedUpBy.ammo = pickedUpBy.maxAmmo;
+        } else if (item.type === 'tuna') {
+          // Restores 1 HP
+          pickedUpBy.hp = Math.min(PLAYER_MAX_HP, pickedUpBy.hp + 1);
+        }
       } else {
         remainingCollectibles.push(item);
       }
@@ -492,7 +622,6 @@ export class GameSimulation {
 
           // Trigger damage at interval crossings
           if (player.lastStormDamageTime === 0) {
-            // First hit after grace
             damageEvents.push({ targetId: player.id, amount: 1 });
             player.lastStormDamageTime = exposure;
           } else if (exposure - player.lastStormDamageTime >= interval) {
@@ -563,6 +692,7 @@ export class GameSimulation {
         id: `drop-${this.nextCollectibleId++}`,
         x: player.x,
         y: player.y,
+        type: 'dreamies',
         value: player.dreamies,
         isDeathDrop: true,
       });
@@ -575,15 +705,24 @@ export class GameSimulation {
 
   public getSnapshot(): RoomSnapshot {
     const storm = this.getStormState();
+    const mapVotes: Record<MapId, number> = { atoll: 0, temple: 0, jungle: 0 };
+    for (const p of this.players.values()) {
+      mapVotes[p.mapVote] = (mapVotes[p.mapVote] || 0) + 1;
+    }
+
     return {
       tick: this.tickCount,
       serverTime: this.elapsedTime,
       phase: this.phase,
+      mapId: this.mapId,
+      mapVotes,
       players: Array.from(this.players.values()).map((p) => ({
         id: p.id,
         name: p.name,
         slot: p.slot,
         status: p.status,
+        ready: p.ready,
+        mapVote: p.mapVote,
         x: Math.round(p.x * 10) / 10,
         y: Math.round(p.y * 10) / 10,
         aimAngle: Math.round(p.aimAngle * 100) / 100,
@@ -596,6 +735,7 @@ export class GameSimulation {
         isReloading: p.isReloading,
         reloadProgress: Math.round(p.reloadProgress * 100) / 100,
         stormExposureSeconds: Math.round(p.stormExposureSeconds * 10) / 10,
+        speedBoostSeconds: Math.round(p.speedBoostSeconds * 10) / 10,
       })),
       pellets: this.pellets.map((pellet) => ({
         id: pellet.id,
@@ -609,6 +749,7 @@ export class GameSimulation {
         id: c.id,
         x: Math.round(c.x),
         y: Math.round(c.y),
+        type: c.type,
         value: c.value,
         isDeathDrop: c.isDeathDrop,
       })),

@@ -1,6 +1,6 @@
 // Shared type definitions
 
-import { ObstacleRect } from './constants.js';
+import { CollectibleType, MapId, ObstacleRect } from './constants.js';
 
 export type PlayerStatus = 'alive' | 'ghost' | 'disconnected';
 export type RoomPhase = 'lobby' | 'playing' | 'finished';
@@ -10,6 +10,8 @@ export interface PlayerState {
   name: string;
   slot: number; // 0, 1, 2
   status: PlayerStatus;
+  ready: boolean;
+  mapVote: MapId;
   x: number;
   y: number;
   aimAngle: number;
@@ -22,6 +24,7 @@ export interface PlayerState {
   isReloading: boolean;
   reloadProgress: number; // 0 to 1
   stormExposureSeconds: number;
+  speedBoostSeconds: number;
 }
 
 export interface PelletState {
@@ -37,6 +40,7 @@ export interface CollectibleState {
   id: string;
   x: number;
   y: number;
+  type: CollectibleType;
   value: number;
   isDeathDrop: boolean;
 }
@@ -53,6 +57,8 @@ export interface RoomSnapshot {
   tick: number;
   serverTime: number;
   phase: RoomPhase;
+  mapId: MapId;
+  mapVotes: Record<MapId, number>;
   players: PlayerState[];
   pellets: PelletState[];
   collectibles: CollectibleState[];
@@ -77,6 +83,7 @@ export interface JoinRoomPayload {
   roomCode: string;
   playerName: string;
   reconnectToken?: string;
+  preferredMap?: MapId;
 }
 
 export interface JoinRoomSuccess {
@@ -84,6 +91,7 @@ export interface JoinRoomSuccess {
   reconnectToken: string;
   roomCode: string;
   slot: number;
+  mapId: MapId;
   obstacles: ObstacleRect[];
 }
 

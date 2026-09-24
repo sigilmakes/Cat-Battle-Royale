@@ -12,7 +12,7 @@
       user-select: none;
     }
     body {
-      background: #0f172a;
+      background: #090d16;
       color: #f8fafc;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
@@ -27,9 +27,10 @@
       width: 1000px;
       height: 750px;
       background: #0284c7;
-      border-radius: 12px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      border-radius: 14px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
       overflow: hidden;
+      border: 2px solid #1e293b;
     }
     canvas {
       display: block;
@@ -40,82 +41,180 @@
     #lobby-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(10px);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 50;
-      gap: 16px;
+      padding: 24px;
     }
-    .card {
+    .lobby-card {
       background: #1e293b;
-      padding: 32px 40px;
+      padding: 28px 36px;
       border-radius: 16px;
       border: 1px solid #334155;
-      text-align: center;
-      width: 380px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      width: 520px;
+      box-shadow: 0 20px 30px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
     h1 {
-      font-size: 28px;
-      font-weight: 800;
-      margin-bottom: 8px;
+      font-size: 26px;
+      font-weight: 900;
+      text-align: center;
       background: linear-gradient(135deg, #f59e0b, #fbbf24);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
     }
-    p.subtitle {
-      font-size: 14px;
+    .subtitle {
+      font-size: 13px;
       color: #94a3b8;
-      margin-bottom: 24px;
+      text-align: center;
+      margin-top: -8px;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
     }
     .input-group {
       display: flex;
       flex-direction: column;
       gap: 6px;
-      text-align: left;
-      margin-bottom: 16px;
+      flex: 1;
     }
     label {
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      color: #cbd5e1;
+      color: #94a3b8;
       letter-spacing: 0.5px;
     }
     input {
       background: #0f172a;
       border: 1px solid #475569;
       border-radius: 8px;
-      padding: 12px 14px;
+      padding: 10px 14px;
       color: #f8fafc;
-      font-size: 15px;
+      font-size: 14px;
       outline: none;
       transition: border-color 0.2s;
     }
     input:focus {
       border-color: #38bdf8;
     }
-    button.btn-primary {
-      width: 100%;
+    button.btn {
       background: #0284c7;
       color: white;
       border: none;
       border-radius: 8px;
-      padding: 14px;
-      font-size: 16px;
+      padding: 10px 18px;
+      font-size: 14px;
       font-weight: 700;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-      margin-top: 8px;
+      transition: all 0.2s;
     }
-    button.btn-primary:hover {
+    button.btn:hover {
       background: #0369a1;
     }
-    button.btn-primary:active {
-      transform: scale(0.98);
+    button.btn-ready {
+      background: #10b981;
+      font-size: 16px;
+      padding: 14px;
+      border-radius: 10px;
+    }
+    button.btn-ready:hover {
+      background: #059669;
+    }
+    button.btn-ready.is-ready {
+      background: #ef4444;
+    }
+    button.btn-ready.is-ready:hover {
+      background: #dc2626;
+    }
+
+    /* Map Voting Buttons */
+    .map-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .map-option {
+      background: #0f172a;
+      border: 2px solid #334155;
+      border-radius: 8px;
+      padding: 10px 8px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .map-option:hover {
+      border-color: #64748b;
+    }
+    .map-option.selected {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.15);
+    }
+    .map-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    .map-votes {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    /* Players list in lobby */
+    .player-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 10px;
+      border: 1px solid #334155;
+    }
+    .player-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.7);
+    }
+    .player-name-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .cat-avatar-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+    .ready-pill {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+    .ready-pill.ready {
+      background: rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      border: 1px solid #10b981;
+    }
+    .ready-pill.waiting {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid #f59e0b;
     }
 
     /* HUD Overlay */
@@ -127,7 +226,7 @@
       display: none;
       flex-direction: column;
       justify-content: space-between;
-      padding: 20px;
+      padding: 16px;
     }
     .hud-top {
       display: flex;
@@ -135,15 +234,16 @@
       align-items: flex-start;
     }
     .hud-card {
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(4px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 10px;
-      padding: 10px 16px;
+      padding: 8px 14px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
     .storm-hud {
       text-align: center;
-      min-width: 200px;
+      min-width: 180px;
     }
     .storm-title {
       font-size: 11px;
@@ -165,26 +265,39 @@
       from { opacity: 0.7; }
       to { opacity: 1; }
     }
+    .health-bar-container {
+      display: flex;
+      gap: 5px;
+      margin-top: 4px;
+    }
+    .health-pip {
+      width: 22px;
+      height: 12px;
+      border-radius: 3px;
+      background: #22c55e;
+      border: 1px solid rgba(0, 0, 0, 0.4);
+    }
+    .health-pip.lost {
+      background: #334155;
+    }
+
+    .speed-buff-badge {
+      display: none;
+      margin-top: 4px;
+      font-size: 10px;
+      font-weight: 800;
+      color: #4ade80;
+      background: rgba(34, 197, 94, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #22c55e;
+      text-align: center;
+    }
 
     .hud-bottom {
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-    }
-    .health-bar-container {
-      display: flex;
-      gap: 6px;
-      margin-top: 4px;
-    }
-    .health-pip {
-      width: 24px;
-      height: 12px;
-      border-radius: 3px;
-      background: #22c55e;
-      border: 1px solid rgba(0, 0, 0, 0.3);
-    }
-    .health-pip.lost {
-      background: #334155;
     }
     .ammo-hud {
       display: flex;
@@ -192,13 +305,13 @@
       align-items: flex-end;
     }
     .ammo-count {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 900;
       color: #38bdf8;
     }
     .ammo-tier {
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       color: #f59e0b;
     }
     .reload-bar {
@@ -207,7 +320,7 @@
       background: #334155;
       border-radius: 3px;
       overflow: hidden;
-      margin-top: 6px;
+      margin-top: 4px;
       display: none;
     }
     .reload-fill {
@@ -216,12 +329,28 @@
       background: #f59e0b;
       transition: width 0.05s linear;
     }
+    .btn-leave {
+      pointer-events: auto;
+      background: rgba(239, 68, 68, 0.3);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-leave:hover {
+      background: #ef4444;
+      color: white;
+    }
 
     /* Finished / Rematch Overlay */
     #finish-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(15, 23, 42, 0.88);
       backdrop-filter: blur(8px);
       display: none;
       flex-direction: column;
@@ -229,80 +358,99 @@
       justify-content: center;
       z-index: 40;
       pointer-events: auto;
+      gap: 12px;
     }
     #finish-title {
-      font-size: 36px;
+      font-size: 34px;
       font-weight: 900;
-      margin-bottom: 12px;
     }
     #finish-desc {
-      font-size: 16px;
+      font-size: 15px;
       color: #cbd5e1;
-      margin-bottom: 24px;
+      margin-bottom: 12px;
     }
     .btn-rematch {
       background: #10b981;
       color: white;
       border: none;
       border-radius: 8px;
-      padding: 14px 28px;
-      font-size: 18px;
+      padding: 12px 28px;
+      font-size: 16px;
       font-weight: 700;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+      transition: all 0.2s;
     }
     .btn-rematch:hover {
       background: #059669;
-    }
-
-    /* Waiting screen in lobby */
-    #waiting-overlay {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.9);
-      padding: 10px 24px;
-      border-radius: 20px;
-      border: 1px solid #38bdf8;
-      font-size: 14px;
-      font-weight: 700;
-      color: #38bdf8;
-      z-index: 20;
-      display: none;
     }
   </style>
 </head>
 <body>
   <div id="game-container">
+    <!-- Lobby Screen -->
     <div id="lobby-overlay">
-      <div class="card">
-        <h1>Cat Battle Royale</h1>
-        <p class="subtitle">3 Cats. 1 Island. Watergun Chaos.</p>
-        <div class="input-group">
-          <label for="player-name">Cat Name</label>
-          <input type="text" id="player-name" placeholder="Ginger, Whiskers..." maxlength="15" value="Whiskers" />
+      <div class="lobby-card">
+        <div>
+          <h1>Cat Battle Royale</h1>
+          <p class="subtitle">3 Cats. 1 Island. Watergun Mayhem.</p>
         </div>
-        <div class="input-group">
-          <label for="room-code">Room Code</label>
-          <input type="text" id="room-code" placeholder="main" maxlength="10" value="main" />
+
+        <div class="row">
+          <div class="input-group">
+            <label for="player-name">Cat Name</label>
+            <input type="text" id="player-name" placeholder="Name..." maxlength="15" value="Whiskers" />
+          </div>
+          <div class="input-group">
+            <label for="room-code">Room Code</label>
+            <input type="text" id="room-code" placeholder="main" maxlength="10" value="main" />
+          </div>
+          <button id="join-btn" class="btn" style="align-self: flex-end; height: 42px;">Enter Room</button>
         </div>
-        <button id="join-btn" class="btn-primary">Join Match</button>
+
+        <!-- Room Lobby details when inside a room -->
+        <div id="lobby-active-panel" style="display: none; flex-direction: column; gap: 14px;">
+          <div>
+            <label>Vote Island Map</label>
+            <div class="map-grid" id="map-selection-grid">
+              <div class="map-option selected" data-map="atoll">
+                <div class="map-name">Tropical Atoll</div>
+                <div class="map-votes" id="votes-atoll">0 votes</div>
+              </div>
+              <div class="map-option" data-map="temple">
+                <div class="map-name">Bastet Temple</div>
+                <div class="map-votes" id="votes-temple">0 votes</div>
+              </div>
+              <div class="map-option" data-map="jungle">
+                <div class="map-name">Catnip Jungle</div>
+                <div class="map-votes" id="votes-jungle">0 votes</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label>Connected Cats (<span id="player-count-num">1</span>/3)</label>
+            <div class="player-list" id="lobby-players-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <button id="ready-btn" class="btn btn-ready">READY UP</button>
+        </div>
       </div>
     </div>
 
-    <div id="waiting-overlay">Waiting for 3 players to connect (1/3)...</div>
-
+    <!-- Active Match HUD -->
     <div id="hud-overlay">
       <div class="hud-top">
         <div class="hud-card">
-          <div style="font-size: 12px; color: #94a3b8;">Health</div>
+          <div style="font-size: 11px; color: #94a3b8; font-weight: 700;">HEALTH</div>
           <div class="health-bar-container" id="hp-pips">
             <div class="health-pip"></div>
             <div class="health-pip"></div>
             <div class="health-pip"></div>
             <div class="health-pip"></div>
           </div>
+          <div class="speed-buff-badge" id="speed-buff-badge">⚡ CATNIP SPRINT</div>
         </div>
 
         <div class="hud-card storm-hud">
@@ -311,14 +459,17 @@
         </div>
 
         <div class="hud-card" style="text-align: right;">
-          <div style="font-size: 12px; color: #94a3b8;">Dreamies</div>
+          <div style="font-size: 11px; color: #94a3b8; font-weight: 700;">DREAMIES</div>
           <div id="dreamies-count" style="font-size: 18px; font-weight: 800; color: #fbbf24;">0 / 5</div>
         </div>
       </div>
 
       <div class="hud-bottom">
-        <div class="hud-card" id="ghost-indicator" style="display: none; background: rgba(147, 51, 234, 0.4); border-color: #a855f7;">
-          <div style="font-size: 13px; font-weight: 800; color: #d8b4fe;">GHOST SPECTATOR</div>
+        <div style="display: flex; gap: 8px; align-items: flex-end;">
+          <div class="hud-card" id="ghost-indicator" style="display: none; background: rgba(147, 51, 234, 0.5); border-color: #a855f7;">
+            <div style="font-size: 12px; font-weight: 800; color: #d8b4fe;">👻 GHOST SPECTATOR</div>
+          </div>
+          <button id="leave-btn" class="btn-leave">Leave Match</button>
         </div>
 
         <div class="hud-card ammo-hud">
@@ -331,10 +482,14 @@
       </div>
     </div>
 
+    <!-- Game Over / Rematch Overlay -->
     <div id="finish-overlay">
       <h2 id="finish-title">Victory!</h2>
       <p id="finish-desc">Whiskers is the last living cat!</p>
-      <button id="rematch-btn" class="btn-rematch">Vote Rematch (0/3)</button>
+      <div style="display: flex; gap: 12px;">
+        <button id="rematch-btn" class="btn-rematch">Vote Rematch (0/3)</button>
+        <button id="finish-leave-btn" class="btn btn-leave" style="padding: 12px 20px; font-size: 15px;">Exit Room</button>
+      </div>
     </div>
   </div>
 

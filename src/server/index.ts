@@ -22,9 +22,8 @@ const io = new Server(server, {
 
 const PORT = Number(process.env.PORT) || 3000;
 const rooms = new Map<string, GameRoom>();
-
 function getOrCreateRoom(rawCode: string): GameRoom {
-  const code = (rawCode || 'main').trim().toLowerCase().slice(0, 10) || 'main';
+  const code = (rawCode || 'main').trim().toLowerCase().slice(0, 32) || 'main';
   let room = rooms.get(code);
   if (!room) {
     room = new GameRoom(code, io);
@@ -66,6 +65,24 @@ io.on('connection', (socket: Socket) => {
     currentRoom.handleJoin(socket, payload);
   });
 
+  socket.on('set_name', (name: unknown) => {
+    if (currentRoom) {
+      currentRoom.handleSetName(socket, name);
+    }
+  });
+
+  socket.on('toggle_ready', (ready: unknown) => {
+    if (currentRoom) {
+      currentRoom.handleToggleReady(socket, ready);
+    }
+  });
+
+  socket.on('vote_map', (mapId: unknown) => {
+    if (currentRoom) {
+      currentRoom.handleVoteMap(socket, mapId);
+    }
+  });
+
   socket.on('player_input', (input: unknown) => {
     if (currentRoom) {
       currentRoom.handleInput(socket, input);
@@ -78,9 +95,20 @@ io.on('connection', (socket: Socket) => {
     }
   });
 
+  socket.on('leave_room', () => {
+    if (currentRoom) {
+      currentRoom.handleLeave(socket);
+      currentRoom = null;
+    }
+  });
+
   socket.on('disconnect', () => {
     if (currentRoom) {
       currentRoom.handleDisconnect(socket);
+      if (currentRoom.isEmpty()) {
+        currentRoom.stop();
+        rooms.delete(currentRoom.code);
+      }
     }
   });
 });

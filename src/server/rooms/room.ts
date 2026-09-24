@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
 import {
+  MapId,
   MAX_PLAYERS,
   SERVER_TICK_DT,
   SERVER_TICK_RATE,
@@ -61,15 +62,20 @@ export class GameRoom {
     this.simulation.step(SERVER_TICK_DT, inputsToProcess);
     this.tickCounter++;
 
-    // Broadcast snapshot at 15 Hz
+    // Broadcast snapshot at configured rate
     if (this.tickCounter % SNAPSHOT_INTERVAL_TICKS === 0) {
-      const snapshot = this.simulation.getSnapshot();
-      this.io.to(this.code).emit('room_state_snapshot', snapshot);
+      this.broadcastSnapshot();
     }
+  }
+
+  public broadcastSnapshot(): void {
+    const snapshot = this.simulation.getSnapshot();
+    this.io.to(this.code).emit('room_state_snapshot', snapshot);
   }
 
   public handleJoin(socket: Socket, payload: JoinRoomPayload): void {
     const playerName = (payload.playerName || 'Cat').trim().slice(0, 15) || 'Cat';
+    const preferredMap: MapId = payload.preferredMap || 'atoll';
 
     // 1. Check if reconnecting with an existing token
     if (payload.reconnectToken) {
@@ -86,9 +92,11 @@ export class GameRoom {
             reconnectToken: session.reconnectToken,
             roomCode: this.code,
             slot: this.simulation.players.get(session.playerId)?.slot ?? 0,
+            mapId: this.simulation.mapId,
             obstacles: this.simulation.obstacles,
           };
           socket.emit('room_joined', successPayload);
+          this.broadcastSnapshot();
           return;
         }
       }
@@ -104,7 +112,7 @@ export class GameRoom {
     const playerId = `p-${crypto.randomUUID().slice(0, 8)}`;
     const reconnectToken = crypto.randomUUID();
 
-    const created = this.simulation.addPlayer(playerId, playerName, reconnectToken);
+    const created = this.simulation.addPlayer(playerId, playerName, reconnectToken, preferredMap);
     if (!created) {
       socket.emit('error_message', { message: 'Unable to join room.' });
       return;
@@ -124,16 +132,39 @@ export class GameRoom {
       reconnectToken,
       roomCode: this.code,
       slot: created.slot,
+      mapId: this.simulation.mapId,
       obstacles: this.simulation.obstacles,
     };
     socket.emit('room_joined', successPayload);
+    this.broadcastSnapshot();
+  }
+
+  public handleSetName(socket: Socket, name: unknown): void {
+    const playerId = this.socketToPlayer.get(socket.id);
+    if (!playerId || typeof name !== 'string') return;
+    this.simulation.setPlayerName(playerId, name);
+    this.broadcastSnapshot();
+  }
+
+  public handleToggleReady(socket: Socket, ready?: unknown): void {
+    const playerId = this.socketToPlayer.get(socket.id);
+    if (!playerId) return;
+    const readyState = typeof ready === 'boolean' ? ready : undefined;
+    this.simulation.setPlayerReady(playerId, readyState);
+    this.broadcastSnapshot();
+  }
+
+  public handleVoteMap(socket: Socket, mapId: unknown): void {
+    const playerId = this.socketToPlayer.get(socket.id);
+    if (!playerId || typeof mapId !== 'string') return;
+    this.simulation.voteMap(playerId, mapId as MapId);
+    this.broadcastSnapshot();
   }
 
   public handleInput(socket: Socket, rawInput: unknown): void {
     const playerId = this.socketToPlayer.get(socket.id);
     if (!playerId) return;
 
-    // Validate input payload safely
     if (typeof rawInput !== 'object' || rawInput === null) return;
     const inp = rawInput as Partial<PlayerInput>;
 
@@ -157,6 +188,11 @@ export class GameRoom {
     const playerId = this.socketToPlayer.get(socket.id);
     if (!playerId) return;
     this.simulation.voteRematch(playerId);
+    this.broadcastSnapshot();
+  }
+
+  public handleLeave(socket: Socket): void {
+    this.handleDisconnect(socket);
   }
 
   public handleDisconnect(socket: Socket): void {
@@ -165,7 +201,20 @@ export class GameRoom {
 
     this.socketToPlayer.delete(socket.id);
     this.pendingInputs.delete(playerId);
-    this.simulation.markDisconnected(playerId);
+
+    if (this.simulation.phase === 'lobby') {
+      // In lobby, clean up session completely so another user can join into the free slot
+      this.sessions.delete(playerId);
+      this.simulation.removePlayer(playerId);
+    } else {
+      this.simulation.markDisconnected(playerId);
+    }
+
+    this.broadcastSnapshot();
+  }
+
+  public isEmpty(): boolean {
+    return this.socketToPlayer.size === 0 && this.sessions.size === 0;
   }
 
   public getPlayerCount(): number {

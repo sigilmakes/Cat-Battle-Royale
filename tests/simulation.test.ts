@@ -18,8 +18,14 @@ function advanceTime(sim: GameSimulation, seconds: number, inputs = new Map<stri
   }
 }
 
+function startMatch(sim: GameSimulation): void {
+  for (const id of sim.players.keys()) {
+    sim.setPlayerReady(id, true);
+  }
+}
+
 describe('GameSimulation Deterministic Engine', () => {
-  it('enforces lobby phase and starts game only when 3 players connect', () => {
+  it('enforces lobby phase and starts game only when all 3 players ready up', () => {
     const sim = new GameSimulation();
     expect(sim.phase).toBe('lobby');
 
@@ -35,12 +41,22 @@ describe('GameSimulation Deterministic Engine', () => {
     const p3 = sim.addPlayer('p3', 'Cat3', 'token-3');
     expect(p3).not.toBeNull();
     expect(sim.players.size).toBe(3);
-    expect(sim.phase).toBe('playing');
+    // 3 joined, but not yet ready -> still in lobby! (Issue #19)
+    expect(sim.phase).toBe('lobby');
 
     // 4th player must be rejected
     const p4 = sim.addPlayer('p4', 'Cat4', 'token-4');
     expect(p4).toBeNull();
     expect(sim.players.size).toBe(3);
+
+    // Players ready up
+    sim.setPlayerReady('p1', true);
+    expect(sim.phase).toBe('lobby');
+    sim.setPlayerReady('p2', true);
+    expect(sim.phase).toBe('lobby');
+    sim.setPlayerReady('p3', true);
+    // All 3 ready -> transitions to playing!
+    expect(sim.phase).toBe('playing');
   });
 
   it('moves player and prevents walking through solid cover obstacles', () => {
@@ -48,6 +64,7 @@ describe('GameSimulation Deterministic Engine', () => {
     sim.addPlayer('p1', 'Cat1', 'tok1');
     sim.addPlayer('p2', 'Cat2', 'tok2');
     sim.addPlayer('p3', 'Cat3', 'tok3');
+    startMatch(sim);
 
     const player = sim.players.get('p1')!;
     // Place player near rock-nw (x: 420, y: 420, width: 80, height: 80) -> rock covers [380, 460]
@@ -64,11 +81,11 @@ describe('GameSimulation Deterministic Engine', () => {
       reload: false,
     });
 
-    // Advance 1 second (at 200px/s, would reach x: 550 without collision)
+    // Advance 1 second
     advanceTime(sim, 1.0, inputs);
 
-    // Player radius is 20, rock left boundary is 380 -> player.x must be blocked at 360
-    expect(player.x).toBeLessThanOrEqual(361);
+    // Player radius is 22, rock left boundary is 380 -> player.x must be blocked <= 360
+    expect(player.x).toBeLessThanOrEqual(360);
     expect(player.y).toBe(420);
   });
 
@@ -77,6 +94,7 @@ describe('GameSimulation Deterministic Engine', () => {
     sim.addPlayer('p1', 'Cat1', 'tok1');
     sim.addPlayer('p2', 'Cat2', 'tok2');
     sim.addPlayer('p3', 'Cat3', 'tok3');
+    startMatch(sim);
 
     const p1 = sim.players.get('p1')!;
     expect(p1.ammo).toBe(4);
@@ -105,7 +123,7 @@ describe('GameSimulation Deterministic Engine', () => {
 
     // Fire remaining 3 shots by advancing past cooldown each time
     for (let shot = 0; shot < 3; shot++) {
-      advanceTime(sim, FIRE_COOLDOWN, inputs);
+      advanceTime(sim, FIRE_COOLDOWN + 0.05, inputs);
     }
 
     // Magazine was 4 shots total -> now 0, triggers automatic reload!
@@ -127,6 +145,7 @@ describe('GameSimulation Deterministic Engine', () => {
     sim.addPlayer('p1', 'Shooter', 'tok1');
     sim.addPlayer('p2', 'Target', 'tok2');
     sim.addPlayer('p3', 'Other', 'tok3');
+    startMatch(sim);
 
     const p1 = sim.players.get('p1')!;
     const p2 = sim.players.get('p2')!;
@@ -154,7 +173,7 @@ describe('GameSimulation Deterministic Engine', () => {
     sim.step(SERVER_TICK_DT, fireInput);
     expect(sim.pellets.length).toBe(1);
 
-    // Let pellet travel (distance 100px at 600px/s takes ~0.17s)
+    // Let pellet travel (distance 100px at 650px/s takes ~0.15s)
     advanceTime(sim, 0.25);
 
     // Target should take 1 damage; shooter takes 0 damage
@@ -169,6 +188,7 @@ describe('GameSimulation Deterministic Engine', () => {
     sim.addPlayer('p1', 'Shooter', 'tok1');
     sim.addPlayer('p2', 'Victim', 'tok2');
     sim.addPlayer('p3', 'Spectator', 'tok3');
+    startMatch(sim);
 
     sim.collectibles = [];
     const p1 = sim.players.get('p1')!;
@@ -214,6 +234,7 @@ describe('GameSimulation Deterministic Engine', () => {
     sim.addPlayer('p1', 'Collector', 'tok1');
     sim.addPlayer('p2', 'Other1', 'tok2');
     sim.addPlayer('p3', 'Other2', 'tok3');
+    startMatch(sim);
 
     const p1 = sim.players.get('p1')!;
     expect(p1.tier).toBe(0);
@@ -224,6 +245,7 @@ describe('GameSimulation Deterministic Engine', () => {
       id: 'test-c1',
       x: p1.x,
       y: p1.y,
+      type: 'dreamies',
       value: 5,
       isDeathDrop: false,
     });
@@ -238,6 +260,7 @@ describe('GameSimulation Deterministic Engine', () => {
       id: 'test-c2',
       x: p1.x,
       y: p1.y,
+      type: 'dreamies',
       value: 7,
       isDeathDrop: false,
     });
@@ -253,6 +276,7 @@ describe('GameSimulation Deterministic Engine', () => {
     sim.addPlayer('p1', 'StormCat', 'tok1');
     sim.addPlayer('p2', 'SafeCat1', 'tok2');
     sim.addPlayer('p3', 'SafeCat2', 'tok3');
+    startMatch(sim);
 
     const p1 = sim.players.get('p1')!;
     // Advance past initial 30s storm wait
@@ -290,6 +314,7 @@ describe('GameSimulation Deterministic Engine', () => {
     sim.addPlayer('p1', 'Cat1', 'tok1');
     sim.addPlayer('p2', 'Cat2', 'tok2');
     sim.addPlayer('p3', 'Cat3', 'tok3');
+    startMatch(sim);
 
     const p1 = sim.players.get('p1')!;
     const p2 = sim.players.get('p2')!;
@@ -329,6 +354,7 @@ describe('GameSimulation Deterministic Engine', () => {
     sim.addPlayer('p1', 'Cat1', 'tok1');
     sim.addPlayer('p2', 'Cat2', 'tok2');
     sim.addPlayer('p3', 'Cat3', 'tok3');
+    startMatch(sim);
 
     const p1 = sim.players.get('p1')!;
     sim.markDisconnected('p1');
